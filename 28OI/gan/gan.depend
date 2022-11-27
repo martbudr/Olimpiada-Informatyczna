@@ -1,0 +1,6 @@
+# depslib dependency file v1.0
+1605016465 source:c:\users\marti\onedrive\pulpit\28oi\gan\main.cpp
+	<iostream>
+	<vector>
+	<queue>
+
