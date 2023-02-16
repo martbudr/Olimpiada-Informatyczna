@@ -3,48 +3,27 @@
 using namespace std;
 
 const int N_MAX = 1e6 + 1;
-int n, q, k;
-int drzewa[N_MAX];
+int n, q;
+int tab[N_MAX];
 
-void wstaw(int i, list<pair<int,int>>& Q) // wstawianie wartosci do kolejki
+struct S{
+    int ans, wart, pos;
+};
+
+int comp_queue(int k)
 {
-    while(!Q.empty() && Q.back().first > drzewa[i]) Q.pop_back();
-    Q.push_back({i, drzewa[i]});
-}
+    deque<S> Q;
+    Q.push_back({0, tab[0], 0});
 
-int wez_max(int i, list<pair<int,int>>& Q) // zwraca indeks do najwiekszego
-{
-    while(Q.front().second < i-k+1) Q.pop_front();
-    return Q.front().second;
-}
+    for(int i=1; i<n; ++i){
+        if(Q.front().pos < i-k) Q.pop_front();
 
-void polacz(list<pair<int,int>>& Q, list<pair<int,int>>& P)
-{
-    Q.merge(P);
-    P.clear();
-}
+        int answ = Q.front().ans + (Q.front().wart <= tab[i]);
+        while(!Q.empty() && (Q.back().ans > answ || (Q.back().ans == answ && Q.back().wart <= tab[i]))) Q.pop_back();
 
-int solve()
-{
-    int zmecz[N_MAX]; // minimalne zmeczenie na prefiksie
-    int zmecz_max = 0;
-
-    list<pair<int,int>> Q, // kolejka K-max - {indeks, wartosc} - zawiera te, ktore maja najmniejsze zmeczenie na przedziale
-        P; // zawiera cala reszte
-
-    zmecz[0] = 0;
-    wstaw(0, Q);
-    for(int i=1; i<n; ++i){ // liczenie kolejnych wartosci
-        int najw = drzewa[wez_max(i, Q)]; // najwiekszy na przedziale
-        if(najw > drzewa[i]){
-            zmecz[i] = zmecz[najw];
-            wstaw(i, Q);
-        }
-        if(zmecz[i] > zmecz_max)
-            polacz(Q, P);
-
+        Q.push_back({answ, tab[i], i});
     }
-    return zmecz[n-1];
+    return Q.back().ans;
 }
 
 int main(void)
@@ -54,10 +33,13 @@ int main(void)
 
     cin >> n;
     for(int i=0; i<n; ++i)
-        cin >> drzewa[i];
+        cin >> tab[i];
+
     cin >> q;
-    for(int i=0; i<q; ++i){
+    while(q--){
+        int k;
         cin >> k;
-        cout << solve() << '\n';
+
+        cout << comp_queue(k) << '\n';
     }
 }

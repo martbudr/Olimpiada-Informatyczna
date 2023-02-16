@@ -2,74 +2,42 @@
 
 using namespace std;
 
-const int N_MAX = 1e6;
+const int N_MAX = 1e5 + 1;
 int n;
-int wart_wej[N_MAX], wart[N_MAX], indeksy[N_MAX], ind_min_wart[N_MAX]; // wart[i] - a[i] z zadania, ind_min_wart - indeks minus wartosc
-int poprzednicy[N_MAX]; // indeks poprzedniego klocka zostawianego dla kazdego z klockow
+int a[N_MAX];
+int amt[N_MAX];
+pair<int,int> ans = {0,0}; // wynik, dla ktorego
+int poprz[N_MAX];
 
-void quick_sort(int lewy, int prawy)
+const int Q = 17, LISC = 1<<Q;
+pair<int,int> tree[LISC<<1];
+void ins(int x, pair<int,int> to_ins) // x - miejsce, to_ins - {ile, dla ktorego}
 {
-    if (lewy == prawy) return;
+    x += LISC;
 
-    int i = lewy, j = prawy;//i, j - "iteratory"
-    int pivot = ind_min_wart[(lewy + prawy) / 2];
-    do {//do while po to, aby o raz mniej sprawdzac warunek (na poczatku jest niepotrzebny)
-        while ((ind_min_wart[i] < pivot) || (ind_min_wart[i] == pivot && wart[i] < wart[(lewy + prawy)/2])) ++i;
-        while ((pivot < ind_min_wart[j]) || (ind_min_wart[j] == pivot && wart[(lewy + prawy)/2] < wart[j])) --j;
-
-        if (i <= j) {//przypadek skrajny - pivot - tez swapowac, aby po tym zwiekszyc i i zmniejszyc j, i zakonczyc
-            swap(ind_min_wart[i], ind_min_wart[j]);
-            swap(indeksy[i], indeksy[j]);
-            swap(wart[i], wart[j]);
-            ++i; --j;//potrzebne, bo inaczej nie zawsze przerywa
-        }
-        else break;
-    }while (i <= j);
-
-    if(lewy < j)//instrukcja warunkowa sprawdzana dlatego, bo w niektorych przypadkach pivot jest jedna z 2 najmniejszych wartosci
-        quick_sort(lewy, j);
-    if(i < prawy)//to samo tylko ze jedna z 2 najwiekszych
-        quick_sort(i, prawy);
+    while(x){
+        if(tree[x].first < to_ins.first)
+            tree[x] = to_ins;
+        x >>= 1;
+    }
 }
 
-class IntervalTree {
-    static const int rozm = (1 << 21), LISC = (1 << 20); // rozmiar, miejsce pierwszego liscia
+pair<int,int> query(int a, int b) // max na przedziale
+{
+    a += LISC; b += LISC;
 
-    void aktualizuj(pair<int,int>& curr, pair<int,int> wart) { // curr - current, wart - nowy kandydat
-        if(wart.first > curr.first){
-            curr = wart;
-        }
+    pair<int,int> nax = tree[a];
+    if(nax.first < tree[b].first) nax = tree[b];
+    while(a>>1 != b>>1){
+        if(a%2 == 0)
+            if(nax.first < tree[a+1].first) nax = tree[a+1];
+        if(b%2 == 1)
+            if(nax.first < tree[b-1].first) nax = tree[b-1];
+
+        a >>= 1; b >>= 1;
     }
-
-public:
-     pair<int,int> drzewo[rozm]; // wartosc i z jakiego indeksu pochodzi
-
-    void wstaw(pair<int,int> wart, int miej) {
-        miej += LISC;
-        while(miej){
-            aktualizuj(drzewo[miej], wart);
-            miej /= 2;
-        }
-    }
-
-    pair<int,int> nax(int l, int p) {
-        l += LISC;
-        p += LISC;
-
-        pair<int,int> ans = drzewo[l];
-        if(l != p) aktualizuj(ans, drzewo[p]);
-
-        while(l/2 != p/2){
-            if(l%2 == 0) aktualizuj(ans, drzewo[l+1]);
-            if(p%2 == 1) aktualizuj(ans, drzewo[p-1]);
-            l /= 2;
-            p /= 2;
-        }
-        return ans;
-    }
-};
-
-IntervalTree drzewo;
+    return nax;
+}
 
 int main(void)
 {
@@ -77,47 +45,39 @@ int main(void)
     cin.tie(0); cout.tie(0);
 
     cin >> n;
-    for(int i=0; i<n; ++i){
-        cin >> wart_wej[i];
-        wart[i] = wart_wej[i];
-        indeksy[i] = i;
-        ind_min_wart[i] = i - wart[i];
+    priority_queue<pair<int,int>, vector<pair<int,int>>, greater<pair<int,int>>> Q; // ile do usuniecia, dla jakiej wartosci
+    for(int i=1; i<=n; ++i){
+        cin >> a[i];
+        Q.push({i-a[i], a[i]});
     }
 
-    quick_sort(0, n-1);
-    for(int i=0; i<n; ++i){
-        cout << ind_min_wart[i] << ' ' << wart[i] << '\n';
+    while(!Q.empty() && Q.top().first < 0) Q.pop();
+    while(!Q.empty()){
+        pair<int,int> curr = Q.top();
+        int curr_id = curr.first + curr.second;
+        Q.pop();
+
+        pair<int,int> ne = query(1, curr.second-1); // para {ile, dla ktorego)
+        ne.first++;
+        poprz[curr_id] = ne.second;
+        ins(curr.second, {ne.first, curr_id});
+
+        if(ne.first > ans.first) ans = {ne.first, curr_id};
     }
 
-    for(int i=0; i<n; ++i){ // dla posortowanego arrayu
-        if(ind_min_wart[i] >= 0){
-            pair<int,int> poprz = drzewo.nax(1, wart[i]-1),
-                do_wst;
-            if(poprz.first >= 1){
-                do_wst = make_pair(poprz.first+1, indeksy[i]);
-                poprzednicy[i] = poprz.second;
-            } else{
-                do_wst = make_pair(1, indeksy[i]);
-                poprzednicy[i] = 0;
-            }
+    // wypisywanie wyniku
+    vector<int> to_pr;
+    int i = ans.second, _i = i;
+    cout << i - a[i] << '\n';
+    while(i){
+        int j = poprz[i];
+        int to_usu = i - a[i] - (j - a[j]);
+        for(int _=1; _<=to_usu; ++_)
+            to_pr.push_back(i-_);
 
-            cout << do_wst.first << ' ' << do_wst.second << ' ' << wart[i] << '\n';
-            drzewo.wstaw(do_wst, wart[i]);
-        }
+        i = poprz[i];
     }
-
-    // wypisywanie odpowiedzi
-    ///for(int i=(1 << 20); i<((1 << 20) + 100); ++i){ /// do usuniecia
-    ///    cout << drzewo.drzewo[i].first << ' ';
-    ///}
-
-    int wierz = drzewo.nax(1, N_MAX).second;
-    while(){
-
-    }
-
-
-    cout << n - drzewo.nax(0, N_MAX).first << '\n';
-
-
+    for(int _ = _i-a[_i]-1; _>=0; --_)
+        cout << to_pr[_] << ' ';
+    cout << '\n';
 }

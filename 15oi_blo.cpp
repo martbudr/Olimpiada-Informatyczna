@@ -4,43 +4,43 @@ using namespace std;
 
 const int MAX_SIZE = 1e5 + 1;
 int n, m;
-vector<vector<int>> sasiedzi(MAX_SIZE);
-vector<int> pre_order(MAX_SIZE),
+vector<vector<int>> sas(MAX_SIZE);
+vector<int> pre_ord(MAX_SIZE),
     low(MAX_SIZE),
-    wlk_skladowej(MAX_SIZE); // wielkosc jednej z dwoch powstalych skladowych
+    wlk_skl(MAX_SIZE); // wielkosc jednej z dwoch powstalych skladowych
 vector<long long> rozw(MAX_SIZE);
 vector<bool> czy_odw(MAX_SIZE); // czy odwiedzony
-int indeks = 1;
+int id = 1;
 
-void dfs(int wierz, int ojciec = -1)
+void dfs(int u, int p = -1)
 {
-    vector<int> ile_odpada;
-    ile_odpada.push_back(1);
-    int wielkosc = 0;
-    pre_order[wierz] = indeks;
-    low[wierz] = indeks++;
-    czy_odw[wierz] = true;
-    for(auto i : sasiedzi[wierz]){
-        if(i != ojciec){
-            if(czy_odw[i])
-                low[wierz] = min(low[wierz], pre_order[i]);
+    vector<int> ile_odp;
+    ile_odp.push_back(1);
+    int wlk = 0;
+    pre_ord[u] = id;
+    low[u] = id++;
+    czy_odw[u] = true;
+    for(auto v : sas[u]){
+        if(v != p){
+            if(czy_odw[v])
+                low[u] = min(low[u], pre_ord[v]);
             else{
-                dfs(i, wierz);
-                wlk_skladowej[wierz] += wlk_skladowej[i] + 1;
-                low[wierz] = min(low[wierz], low[i]);
-                if(low[i] >= pre_order[wierz])
-                    ile_odpada.push_back(wlk_skladowej[i] + 1);
+                dfs(v, u);
+                wlk_skl[u] += wlk_skl[v] + 1;
+                low[u] = min(low[u], low[v]);
+                if(low[v] >= pre_ord[u])
+                    ile_odp.push_back(wlk_skl[v] + 1);
                 else
-                    wielkosc += wlk_skladowej[i] + 1;
+                    wlk += wlk_skl[v] + 1;
             }
         }
     }
 
-    wielkosc += n - (wlk_skladowej[wierz] + 1);
-    ile_odpada.push_back(wielkosc);
+    wlk += n - (wlk_skl[u] + 1);
+    ile_odp.push_back(wlk);
 
-    for(auto i : ile_odpada)
-        rozw[wierz] += 1LL * i * (n-i);
+    for(auto i : ile_odp)
+        rozw[u] += 1LL * i * (n-i);
 }
 
 
@@ -54,8 +54,8 @@ int main(void)
     int a, b;
     for(int i=0; i<m; ++i){
         cin >> a >> b;
-        sasiedzi[a].push_back(b);
-        sasiedzi[b].push_back(a);
+        sas[a].push_back(b);
+        sas[b].push_back(a);
     }
 
     dfs(1);

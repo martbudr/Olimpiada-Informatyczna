@@ -4,69 +4,62 @@ using namespace std;
 
 const int N_MAX = 1e6 + 1;
 int n;
-vector<int> sas[N_MAX]; // sasiedzi
-int pod[N_MAX]; // ilosci wierzcholkow w poddrzewie z korzeniem w danym wierzcholku
-vector<long long> wynik(N_MAX, -1);
-pair<int,int> nast = {1, -1}; // nastepny wierzcholek do rozwazenia
-long long sciezki[N_MAX];
-long long calk; // czas calkowity
-int najw; // najwieksze poddrzewo z korzeniem w danym
+vector<int> sas[N_MAX];
+int pod[N_MAX]; // ilosc wierzcholkow w poddrzewie rooted at u (wliczajac u)
+int centr, centr_2 = -1;
+int nax_fo; // w ktorym poddrzewie mamy najwiecej wierzcholkow dla pierwszego centroidu
+long long all = 0; // wszystkie sciezki wlacznie z powrotna
 
-void dfs1(int v, int p = -1)
+void cnt_pod(int u, int p = -1)
 {
-    pod[v] = 1;
-    for(auto u : sas[v]) if(u != p){
-        dfs1(u, v);
-        pod[v] += pod[u];
+    pod[u] = 1;
+    for(auto v : sas[u]) if(v != p){
+        cnt_pod(v, u);
+        pod[u] += pod[v];
+        all += 2*pod[v];
     }
 }
 
-void dfs2(int v, int p = -1, int dlu = 0) // szukanie dl wszystkich sciezek i zapisanie maksymalnych dla danego poddrzewa w tablicy
+void cen_cnt(int u)
 {
-    sciezki[v] = dlu;
-    calk += sciezki[v];
-    for(auto u : sas[v]) if(u != p){
-        dfs2(u, v, dlu+1);
-        sciezki[v] = max(sciezki[v], sciezki[u]);
-    }
-}
-
-long long znajdz(int v, int dl_akt = 0) // szukanie najdluzszej sciezki - kolejny dfs (dl_akt - dlugosc sciezki od korzenia do aktualnego wierzcholka)
-{
-    calk = 0;
-    dfs2(v);
-    long long nax = 0; // jak daleko jest najdalszy w najwiekszym poddrzewie
-    int ile_pod = 0; // rozmiar poddrzewa
-    for(auto u : sas[v]){
-        if(pod[u] > ile_pod){
-            najw = u;
-            nax = sciezki[u];
-            ile_pod = pod[u];
+    bool fnd = true;
+    int nax = 0; // dla ktorego sasiada mamy maksymalna ilosc
+    for(auto v : sas[u]){
+        if(pod[v] > nax){
+            nax = pod[v];
+            nax_fo = v;
         }
-        else if(pod[u] == ile_pod)
-            nax = max(nax, sciezki[u]);
-    }
 
-    return 2*calk - nax;
+        if(pod[v] > n/2){
+            // aktualizacja wartosci pod, bo zmieniamy korzen drzewa z u na v
+            pod[u] -= pod[v];
+            pod[v] += pod[u];
+            fnd = false;
+            cen_cnt(v);
+        }
+    }
+    if(fnd){
+        centr = u;
+
+        // sprawdzanie potencjalnego drugiego centroidu
+        bool scnd = true;
+        pod[u] -= pod[nax_fo];
+        pod[nax_fo] += pod[u];
+        for(auto x : sas[nax_fo]){
+            if(pod[x] > n/2) scnd = false;
+        }
+
+        if(scnd) centr_2 = nax_fo;
+    }
 }
 
-void sprawdz(int v, int p)
+int cnt_longest(int u, int p) // liczenie najdluzszej sciezki z danego wierzcholka do liscia
 {
-    // aktualizowanie, aby aktualny v faktycznie byl korzeniem
-    if(p != -1){
-        pod[p] -= pod[v];
-        pod[v] = n;
+    int ans = 0;
+    for(auto v : sas[u]) if(v != p){
+        ans = max(ans, cnt_longest(v, u)+1);
     }
-    for(auto u : sas[v]) if(2*pod[u] > n){
-        if(u != p)
-            nast = {u, v};
-        else
-            nast = {0, 0};
-        return;
-    }
-    // jesli nie bylo zadnego rozm > (n/2)
-    wynik[v] = znajdz(v);
-    nast = make_pair(najw, v);
+    return ans;
 }
 
 int main(void)
@@ -82,10 +75,43 @@ int main(void)
         sas[b].push_back(a);
     }
 
-    dfs1(1);
-    while(nast.first != 0)
-        sprawdz(nast.first, nast.second);
+    if(n == 1){
+        cout << 0 << '\n';
+        return 0;
+    }
 
-    for(int i=1; i<=n; ++i)
-        cout << wynik[i] << '\n';
+    cnt_pod(1);
+    cen_cnt(1);
+
+    all = 0;
+    cnt_pod(centr);
+
+    bool roz = false; // czy rozwazono ten drugi
+    for(int i=1; i<=n; ++i){
+        if(i != centr && i != centr_2){
+            cout << -1 << '\n';
+            continue;
+        }
+
+        // jesli jest centroidem, czyli istnieje wynik dla niego
+        long long ans = all;
+        if(i == centr){
+            if(roz){
+                pod[centr_2] -= pod[centr];
+                pod[centr] += pod[centr_2];
+            }
+            if(2*pod[nax_fo] == n)
+                ans -= cnt_longest(nax_fo, centr) + 1;
+            else ans -= cnt_longest(centr, -1);
+        }
+        else{
+            pod[centr] -= pod[centr_2];
+            pod[centr_2] += pod[centr];
+            if(2*pod[centr] == n)
+                ans -= cnt_longest(centr, centr_2) + 1;
+            else ans -= cnt_longest(centr_2, -1);
+            roz = true;
+        }
+        cout << ans << '\n';
+    }
 }

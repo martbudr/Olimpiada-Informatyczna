@@ -1,28 +1,24 @@
-// bledne
 #include <bits/stdc++.h>
 
 using namespace std;
 
 const int N_MAX = 5e3 + 1;
 int n;
-vector<int> sas[N_MAX], pre[N_MAX];
-int deg[N_MAX];
-vector<int> ord;
-vector<bitset<N_MAX>> mom(N_MAX);
+vector<int> sas[N_MAX];
+int ans = 0;
+bool fin; // czy znaleziono koniec sciezki
+bool vis[N_MAX];
 
-void topo_sort(int st) // st - start
+void dfs(int u)
 {
-    queue<int> Q;
-    Q.push(st);
-    while(!Q.empty()){
-        int u = Q.front();
-        ord.push_back(u);
-        Q.pop();
-
-        for(int v : sas[u]){
-            deg[v]--;
-            if(deg[v] == 0) Q.push(v);
-        }
+    if(u == n){
+        ans++;
+        fin = true;
+        return;
+    }
+    vis[u] = true;
+    for(auto v : sas[u]) if(!fin && !vis[v]){
+        dfs(v);
     }
 }
 
@@ -32,27 +28,19 @@ int main(void)
     cin.tie(0); cout.tie(0);
 
     cin >> n;
-    int amt, b;
-    for(int i=1; i<=n-1; ++i){
+    int amt, x;
+    for(int i=1; i<n; ++i){
         cin >> amt;
         for(int j=0; j<amt; ++j){
-            cin >> b;
-            sas[i].push_back(b);
-            pre[b].push_back(i);
-            deg[b]++;
+            cin >> x;
+            sas[i].push_back(x);
         }
     }
 
-    topo_sort(1);
-
-    mom[1][0] = 1;
-    for(int i=1; i<n-1; ++i){
-        int u = ord[i];
-        for(auto v : pre[u]){
-            mom[u] |= (mom[v]<<1);
-        }
-        cout << u << ' ' << mom[u].count() << '\n';
+    for(auto v : sas[1]){
+        fin = false;
+        if(!vis[v]) dfs(v);
     }
 
-    cout << (mom[n].count()) << '\n';
+    cout << ans << '\n';
 }
